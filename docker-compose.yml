@@ -1,5 +1,4 @@
 version: '3.8'
-
 services:
   # MongoDB veritabanı
   mongodb:
@@ -35,21 +34,37 @@ services:
     networks:
       - myapp-network
 
-  # Frontend (SvelteKit)
+  # Frontend (SvelteKit) - Production Build
   frontend:
     image: node:18-alpine
     container_name: myapp-frontend
     restart: unless-stopped
     working_dir: /app
     ports:
-      - "8080:8080"
+      - "4173:4173"  # SvelteKit preview port
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
     volumes:
       - .:/app
       - /app/node_modules
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    command: sh -c "npm install && npm run build && npm run preview -- --host 0.0.0.0"
     depends_on:
+      - backend
+    networks:
+      - myapp-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: myapp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
       - backend
     networks:
       - myapp-network
