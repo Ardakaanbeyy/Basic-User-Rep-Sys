@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # MongoDB veritabanı
+  mongodb:
+    image: mongo:7.0
+    container_name: myapp-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: reports
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - myapp-network
+
+  # Backend API
+  backend:
+    image: node:18-alpine
+    container_name: myapp-backend
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/reports
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run server"
+    depends_on:
+      - mongodb
+    networks:
+      - myapp-network
+
+  # Frontend (SvelteKit)
+  frontend:
+    image: node:18-alpine
+    container_name: myapp-frontend
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "8080:8080"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend
+    networks:
+      - myapp-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  myapp-network:
+    driver: bridge
